@@ -1,0 +1,38 @@
+toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sj-psql-db-tools"
+version = "0.0.1"
+description = "PostgresQL database tools for my projects"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["postgres", "psql", "db", "tools"]
+license = { text = "MIT" }
+authors = [
+  { name = "Sanket Jain", email = "djsj37@gmail.com" },
+]
+dependencies = [
+  "pg8000",
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/MrJay37/sj-psql-db-tools"
+Source = "https://github.com/MrJay37/sj-psql-db-tools"
+
+[project.scripts]
+# Replace with actual console scripts from setup.py entry_points
+sj-psql-db-tools = "sj_psql_db_tools.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sj_psql_db_tools*"]
+exclude = ["tests*"]
