@@ -215,8 +215,8 @@ def createTable(db: PSQLDBConnector, table: DBObject, **kwargs) -> None:
         createDeleteRecordFunction(db, table, archive_table)
 
 
-def insertRecords(db: PSQLDBConnector, table: DBObject, records: list[dict], created_by_id) -> None:
-    db.insertData(
+def insertRecords(db: PSQLDBConnector, table: DBObject, records: list[dict], created_by_id) -> QueryResponse:
+    return db.insertData(
         table,
         data=[{
             **record,
@@ -233,8 +233,8 @@ def updateRecord(
     where: dict,
     update: dict,
     modified_by_id
-) -> None:
-    db.updateData(
+) -> QueryResponse:
+    return db.updateData(
         table,
         update={
             **update,

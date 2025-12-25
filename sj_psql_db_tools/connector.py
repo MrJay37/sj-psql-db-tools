@@ -71,7 +71,7 @@ class PSQLDBConnector:
             self._q_gen.generate_select_query(
                 obj_name,
                 fields=kwargs.get("fields"),
-                where=kwargs.get("where_clause"),
+                where=kwargs.get("where"),
                 limit=kwargs.get("limit"),
                 offset=kwargs.get("offset")
             )

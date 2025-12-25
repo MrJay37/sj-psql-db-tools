@@ -25,7 +25,7 @@ class QueryGenerator:
                 clauses.append(f'"{key}" IS NULL')
 
             else:
-                clauses.append(f'"{key}" = \'{self.format_value(value)}\'')
+                clauses.append(f'"{key}" = {self.format_value(value)}')
 
         return " AND ".join(clauses)
 
@@ -42,7 +42,7 @@ class QueryGenerator:
         query = f'SELECT {fields_str} FROM {db_obj.get_full_name()}'
 
         if where is not None:
-            query += self.generate_where_clause(where)
+            query += '\nWHERE ' + self.generate_where_clause(where)
 
         if limit is not None:
             query += f' LIMIT {limit}'

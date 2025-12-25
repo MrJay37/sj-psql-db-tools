@@ -7,3 +7,7 @@ venv/
 /*.env*
 /*.py
 !/setup.py
+
+/*.egg-info/
+/build/
+/.eggs/
