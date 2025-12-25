@@ -1,10 +1,7 @@
-from pg8000 import Cursor
-
-
 class QueryResponse:
-    def __init__(self, cursor: Cursor):
-        self._data = cursor.fetchall()
-        self._columns = [desc[0] for desc in cursor.description]
+    def __init__(self, data: tuple, columns: list):
+        self._data = data
+        self._columns = columns
 
     def as_dicts(self):
         return [dict(zip(self.columns, row)) for row in self._data]

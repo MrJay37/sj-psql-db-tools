@@ -1,6 +1,4 @@
-from dataclasses import fields
-
-from pg8000 import connect, Connection
+from pg8000 import connect, Connection, ProgrammingError
 from sj_psql_db_tools.models import QueryResponse
 from sj_psql_db_tools.query_generator import QueryGenerator
 
@@ -22,6 +20,8 @@ class PSQLDBConnector:
         self.user = kwargs.get("user", self._user)
         self.password = kwargs.get("password")
 
+        self._autocommit = kwargs.get("autocommit", True)
+
         self._connection = connect(
             host=self.host,
             port=self.port,
@@ -29,8 +29,6 @@ class PSQLDBConnector:
             user=self.user,
             password=self.password
         )
-
-        self._cursor = self._connection.cursor()
 
     def __del__(self):
         try:
@@ -41,17 +39,59 @@ class PSQLDBConnector:
             ...
 
     def execute(self, query: str):
-        self._cursor.execute(query)
+        c = self._connection.cursor()
 
-        return QueryResponse(self._cursor)
+        try:
+            c.execute(query)
 
-    def getData(self, obj_name, **kwargs):
+        except ProgrammingError:
+            c.execute("rollback;")  # Close current transaction before raising
+            raise
+
+        try:
+            data = c.fetchall()
+
+        except ProgrammingError:
+            data = ()
+
+        res =  QueryResponse(
+            data=data,
+            columns=[] if c.description is None else [desc[0] for desc in c.description]
+        )
+
+        if self._autocommit:
+            c.execute(f"commit;")
+
+        del c
+
+        return res
+
+    def getData(self, obj_name, **kwargs) -> QueryResponse:
         return self.execute(
             self._q_gen.generate_select_query(
                 obj_name,
                 fields=kwargs.get("fields"),
-                where_clause=kwargs.get("where_clause"),
+                where=kwargs.get("where_clause"),
                 limit=kwargs.get("limit"),
                 offset=kwargs.get("offset")
+            )
+        )
+
+    def insertData(self, obj_name, data: list[dict], returning: bool | list | str = False) -> QueryResponse:
+        return self.execute(
+            self._q_gen.generate_insert_query(
+                obj_name,
+                data,
+                returning
+            )
+        )
+
+    def updateData(self, obj_name, update: dict, where: dict, returning: bool | list | str = False) -> QueryResponse:
+        return self.execute(
+            self._q_gen.generate_update_query(
+                obj_name,
+                update,
+                where,
+                returning
             )
         )
