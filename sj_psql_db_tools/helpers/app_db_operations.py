@@ -169,7 +169,17 @@ def createDeleteRecordFunction(db: PSQLDBConnector, table: DBObject, archive_tab
         f"$$;"
     )
 
-    db.execute(function_query)
+    try:
+        db.execute(function_query)
+
+    except ProgrammingError as e:
+        if e.args[0]['C'] == '42P13':  # Function already exists
+            logging.debug(f"Dropping existing delete function and recreating")
+            db.execute(f'drop function "{table.schema_name}"."delete_{table.obj_name.strip("s")}"(uuid, uuid);')
+            db.execute(function_query)
+
+        else:
+            raise e  # Reraise other exceptions
 
     logging.info(f"Delete function created")
 

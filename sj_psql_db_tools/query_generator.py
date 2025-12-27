@@ -130,7 +130,7 @@ class QueryGenerator:
         query = (
             f'UPDATE {db_obj.get_full_name()}\n'
             f'SET {set_clause_str}\n'
-            f'WHERE {where}\n' +
+            f'WHERE {self.generate_where_clause(where)}\n' +
             returning_clause
         ).strip('\n') + '\n;'
 
