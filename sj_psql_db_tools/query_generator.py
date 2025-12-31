@@ -37,7 +37,11 @@ class QueryGenerator:
         limit: int | None = None,
         offset: int | None = None
     ) -> str:
-        fields_str = ", ".join([f'"{field.name}"' for field in (fields or db_obj.fields)])
+        if fields is None:
+            fields_str = '*'
+
+        else:
+            fields_str = ", ".join([f'"{field.name}"' for field in (fields or db_obj.fields)])
 
         query = f'SELECT {fields_str} FROM {db_obj.get_full_name()}'
 

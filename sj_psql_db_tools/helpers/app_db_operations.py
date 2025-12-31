@@ -97,7 +97,16 @@ def createUpsertArchiveFunction(db: PSQLDBConnector, function_name, table: DBObj
     db.execute(function_query)
 
 
-def createTriggers(db: PSQLDBConnector, table: DBObject, archive_table: DBObject) -> None:
+def createTriggers(db: PSQLDBConnector, table: DBObject, archive_table: DBObject = None) -> None:
+    if archive_table is None:
+        archive_table = DBObject(
+            schema_name=f"__{table.schema_name}__",
+            obj_name=table.obj_name,
+            fields=[
+                Field("archiveSerialId", data_type='int8'),
+                Field("addedAt", data_type='timestamptz'),
+            ] + table.fields
+        )
     upsert_triggers = [
         {"action": "insert"},
         {"action": "update"}
@@ -133,7 +142,17 @@ def createTriggers(db: PSQLDBConnector, table: DBObject, archive_table: DBObject
         logging.info(f"{trig['action']} trigger created")
 
 
-def createDeleteRecordFunction(db: PSQLDBConnector, table: DBObject, archive_table: DBObject, **kwargs) -> None:
+def createDeleteRecordFunction(db: PSQLDBConnector, table: DBObject, archive_table: DBObject=None, **kwargs) -> None:
+    if archive_table is None:
+        archive_table = DBObject(
+            schema_name=f"__{table.schema_name}__",
+            obj_name=table.obj_name,
+            fields=[
+                Field("archiveSerialId", data_type='int8'),
+                Field("addedAt", data_type='timestamptz'),
+            ] + table.fields
+        )
+
     field_definitions = [f'"{col.name}" {col.data_type}' for col in table.fields]
 
     field_names = [f'"{col.name}"' for col in table.fields]
@@ -223,6 +242,53 @@ def createTable(db: PSQLDBConnector, table: DBObject, **kwargs) -> None:
         createTriggers(db, table, archive_table)
 
         createDeleteRecordFunction(db, table, archive_table)
+
+
+def addFieldToTable(db: PSQLDBConnector, table: DBObject, col: Field, archive_table: DBObject=None) -> None:
+    # Check if it exists already
+    try:
+        exists = db.getData(
+            DBObject("information_schema", "columns"),
+            where={
+                "table_schema": table.schema_name,
+                "table_name": table.obj_name,
+                "column_name": col.name
+            }
+        ).as_dicts()[0]
+
+        logging.error(f"Field {col.name} already exists in table {table.get_full_name()}.")
+        return
+
+    except IndexError:
+        pass
+
+    field_def = f'"{col.name}" {col.data_type} '
+
+    if not col.is_nullable:
+        field_def += " not null "
+
+    if col.default_value is not None:
+        field_def += f' default \'{col.default_value}\' '
+
+    db.execute(f'alter table {table.get_full_name()} add column {field_def};')
+
+    if archive_table is None:
+        archive_table = DBObject(
+            schema_name=f"__{table.schema_name}__",
+            obj_name=table.obj_name,
+            fields=[
+                Field("archiveSerialId", data_type='int8'),
+                Field("addedAt", data_type='timestamptz'),
+            ] + table.fields
+        )
+
+    db.execute(f"alter table {archive_table.get_full_name()} add column \"{col.name}\" {col.data_type};")  # no constraints in archive table
+
+    # Recreate triggers and delete function
+    createTriggers(db, table, archive_table)
+    createDeleteRecordFunction(db, table, archive_table)
+
+    logging.info(f"Field {col.name} added to table {table.get_full_name()} successfully.")
 
 
 def insertRecords(db: PSQLDBConnector, table: DBObject, records: list[dict], created_by_id) -> QueryResponse:
